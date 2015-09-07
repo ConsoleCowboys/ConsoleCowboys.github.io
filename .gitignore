@@ -1,5 +1,5 @@
 .publish/
 node_modules/
 build/
-**/*.sw[o|p]
+*.sw[o|p]
 **npm-debug.log

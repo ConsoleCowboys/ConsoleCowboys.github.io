@@ -13,10 +13,11 @@ var ENVS = { production: 80, staging: 60124 };
 app.use(morgan('combined'));
 
 /* routes */
-app.get(environment + '/api', function (req, res) { res.send('API TBD'); });
+//app.get(environment + '/api', function (req, res) { res.send('API TBD'); });
 
 /* static server */
-app.use(environment, express.static('../src/public'));
+app.use('/',express.static('../src/public'));
+console.log('CWD: ',process.cwd());
 
 /* server */
 var server = app.listen(ENVS[env], function () {
