@@ -5,6 +5,24 @@ var concat = require('gulp-concat');
 var ghPages = require('gulp-gh-pages');
 var handlebars = require('gulp-compile-handlebars');
 var rename = require('gulp-rename');
+var fs = require('fs');
+var htmlmin = require('gulp-htmlmin');
+var templateData = require('./src/templates/data');
+var options = {
+  ignorePartials: true,
+  batch : ['src/templates/pages', 'src/templates/partials'],
+  helpers: require('./src/templates/helpers')
+};
+
+gulp.task('watch', function() {
+  var watcher = gulp.watch([
+    'src/**/*.js',
+    'src/**/*.hbs',
+  ], ['build']);
+  watcher.on('change', function(event) {
+    console.log(event.path + ' was ' + event.type + ', running tasks...');
+  });
+});
 
 gulp.task('default', ['build']);
 gulp.task('build', ['copy', 'scripts', 'templates']);
@@ -24,31 +42,29 @@ gulp.task('scripts', function () {
 });
 
 gulp.task('templates', function() {
-    var options = {
-      //ignores the unknown footer2 partial in the handlebars template,
-      //defaults to false 
-      ignorePartials: true,
-      // partials (hash table of strings)
-      // TODO transition to files for next step's import
-      partials : { footer : '<footer>the end</footer>' },
-      // partials (directories to use for partials)
-      batch : ['src/templates/'],
-      helpers : {
-        capitals : function(str){ return str && str.toUpperCase() || ''; }
-      }
-    };
+  fs.readdir('src/templates/pages', function (err, files) {
+    if (err) return console.log(err);
 
-    var templateData = { firstName: 'Kaanon' };
-    gulp.src('src/templates/*.hbs')
-      .pipe(handlebars(templateData, options))
-      .pipe(rename(function (path) { path.extname = ".html" }))
-      .pipe(gulp.dest('build'));
+    files.forEach(function(file) {
+      file = file.split('.');
+      file.pop(); // remove .ext
+      file = file.join('.');
+      gulp.src(['src/templates/index.hbs'])
+        .pipe(handlebars(templateData[file], options))
+        .pipe(rename(function (path) {
+          path.basename = file;
+          path.extname = ".html";
+        }))
+        .pipe(htmlmin({collapseWhitespace: true}))
+        .pipe(gulp.dest('build'));
+    });
+  });
 });
  
+/* must push to `master` branch for root domains, such as:
+ *   consolecowboys.github.io 
+ * or push to `gh-pages` for sub-sites, such as:
+ *   consolecowboys.github.io/sub-site-name */
 gulp.task('upload', function() {
-  // must push to `master` branch for root domains, such as:
-  // consolecowboys.github.io 
-  // or push to `gh-pages` for sub-sites, such as:
-  // consolecowboys.github.io/sub-site-name
   return gulp.src('build/**/*').pipe(ghPages({ branch: 'master' }));
 });

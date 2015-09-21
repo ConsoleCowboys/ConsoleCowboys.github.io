@@ -22,43 +22,39 @@ app.use(morgan('combined'));
 // handlebars options
 var options = {
   extname: '.hbs',
-
-  // TODO consolidate this with those helpers used by gulp task.
-  helpers: {
-    capitals : function(str){ return str && str.toUpperCase() || ''; }
-  }
+  helpers: require('../src/templates/helpers'),
+  partialsDir: ['src/templates/pages', 'src/templates/partials/']
 };
 
 // handlebars renderer
 var hbs = exphbs.create(options);
-
-app.engine('.hbs', hbs.engine);
-app.set('view engine', '.hbs');
+app.engine('hbs', hbs.engine);
+app.set('view engine', 'hbs');
+app.set('views', 'src/templates/');
 
 // respond with handlesbars template (rendered)
 app.use(function (req,res,next) {
-  var entireUrl = req.originalUrl;
-  var ext = entireUrl.split('.').pop();
-  var filepath = function (fldr) {
-    fldr = fldr || 'public';
-    return process.cwd() + '/src/' + fldr + entireUrl;
-  };
+  var filepath, entireUrl = req.originalUrl, ext = entireUrl.split('.').pop();
 
   // FIXME: this crude method breaks if directories contain periods
   // if url has no extension, render with handlebars
   if (ext === entireUrl) {
-    return res.render('../src/templates');
+    ext = ext.indexOf('/')===0 ? ext.slice(1) : ext;
+    return res.render('index', { name: ext || 'index' });
+  }
+
   // if requesting js, use app.js
-  } else if (ext === 'js') {
-    filepath = filepath('scripts');
+  if (ext === 'js') {
+    filepath = getFilepath(entireUrl, 'scripts');
     fs.stat(filepath, function (err) {
       if (!err) return res.sendFile(filepath);
       return res.status(404).send('404: Not found');
     });
+
   // FIXME: the dirtiest static file server to avoid figuring out how to make
   // express routers work with a compiled static page handlebars middleware
   } else {
-    filepath = filepath();
+    filepath = getFilepath(entireUrl);
     fs.stat(filepath, function (err) {
       if (!err) return res.sendFile(filepath);
       return res.status(404).send('404: Not found');
@@ -73,3 +69,9 @@ var server = app.listen(ENVS[env], function () {
 
   console.log('Example app listening at http://%s:%s', host, port);
 });
+
+function getFilepath (entireUrl, fldr) {
+  entireUrl = entireUrl || '/';
+  fldr      = fldr || 'public';
+  return process.cwd() + '/src/' + fldr + entireUrl;
+};
